@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--dets_json', default ='merged_C02_170621100000_fine_new.json', help='input detections file')
 
-    parser.add_argument('--dets_csv', default='merged_C02_170621100000_fine_new.json.dets.txt', help='output name file, by default converted detections file name')
+    parser.add_argument('--dets_csv', default='', help='output name file, by default converted detections file name')
     
     parser.add_argument('--tracks', default='', help='output name file, by default track+detections file name')
 
@@ -147,8 +147,11 @@ if __name__ == '__main__':
     
 
     path = args.tracks
-
     dets_csv = args.dets_csv
+    if dets_csv == '':
+        dets_csv = dets_json+'.dets.txt'
+    print(dets_json)
+    print(dets_csv)
 
     output = args.tracks
 
@@ -156,10 +159,19 @@ if __name__ == '__main__':
 
     do_tracking(dets_csv, tracks= None)
 
-
+    
 
     if output =='':
 
-        output='Track_'+path
+        output='Track_kalman'+path
 
     print("Total Tracking took: %.3f for %d frames or %.1f FPS"%(total_time,total_frames,total_frames/total_time))
+
+    #if not os.path.exists('output'):
+    #    os.makedirs('output')
+
+
+   
+
+
+    
