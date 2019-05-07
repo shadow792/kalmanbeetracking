@@ -98,7 +98,8 @@ def do_tracking(dets_csv, tracks=None):
     if (dets_csv is None):
         dets_csv = dets_csv
     if (tracks is None):
-        tracks = dets_csv+'.tracks.txt'
+        tracks = dets_csv+'.kalman_tracks.json'
+        tracks_idf = dets_csv+'.ID_kalman_tracks.json'
 
     seq_dets = np.loadtxt(dets_csv,delimiter=',') #load detections
 
@@ -112,20 +113,43 @@ def do_tracking(dets_csv, tracks=None):
     sort.KalmanBoxTracker.count=0
    
 
-    with open(tracks,'w') as tracks_fid:
-        for frame in range(int(seq_dets[:,0].max())+1):
-             
-            dets = seq_dets[seq_dets[:,0]==frame,2:7]
-            dets[:,2:4] += dets[:,0:2] #convert to [x1,y1,w,h] to [x1,y1,x2,y2]
-            total_frames += 1
+   
+    kalman_tracks ={}
+    tracks_id = {}
+    for frame in range(int(seq_dets[:,0].max())+1):
+        if frame>10 and frame%10000 ==0: 
+            print('Processing frame %02d'%frame)
+        if frame not in kalman_tracks.keys():
+            kalman_tracks[frame]={}
+        dets = seq_dets[seq_dets[:,0]==frame,2:7]
+        dets[:,2:4] += dets[:,0:2] #convert to [x1,y1,w,h] to [x1,y1,x2,y2]
+        total_frames += 1
 
-            start_time = time.time()
-            trackers_states = mot_tracker.update(dets)
-            cycle_time = time.time() - start_time
-            total_time += cycle_time
+        start_time = time.time()
+        trackers_states = mot_tracker.update(dets)
+        cycle_time = time.time() - start_time
+        total_time += cycle_time
             
-            for d in trackers_states: 
-                print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1'%(frame,d[4],d[0],d[1],d[2]-d[0],d[3]-d[1]),file = tracks_fid)
+        for d in trackers_states:
+            
+            x = d[0]+200
+            y = d[1]+200
+            key= str(int(x))+'_'+str(int(y))
+            kalman_tracks[frame][key]=d[4]
+            
+            if d[4] not in tracks_id.keys():
+                tracks_id[d[4]]={'positions':[[x,y]],
+                                  'init_frame':frame,
+                                  }
+            else:
+                tracks_id[d[4]]['positions'].append([x,y])
+            
+    with open(tracks,'w') as tracks_fid: 
+        json.dump(kalman_tracks,tracks_fid)
+    with open(tracks_idf,'w') as tracks_f:
+        json.dump(tracks_id,tracks_f)
+        #print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1'%(frame,d[4],d[0],d[1],d[2]-d[0],d[3]-d[1]),file = tracks_fid)
+    #print("Total Tracking took: %.3f for %d frames or %.1f FPS"%(total_time,total_frames,total_frames/total_time))
 
 
 
@@ -165,8 +189,7 @@ if __name__ == '__main__':
 
         output='Track_kalman'+path
 
-    print("Total Tracking took: %.3f for %d frames or %.1f FPS"%(total_time,total_frames,total_frames/total_time))
-
+    
     #if not os.path.exists('output'):
     #    os.makedirs('output')
 
